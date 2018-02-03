@@ -12,3 +12,5 @@ A simple project of apple product page
 3. npm install
 
 4. npm start
+
+You can use Chrome Dev tool to simulate phone.
