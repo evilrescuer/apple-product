@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<title>Apple products</title>
+		<meta name="Keywords" content="iPad, special, cheapest"/>
+		<meta name="Description" content="Special price about apple products, like iphone, ipad and so on! enjoy it!"/>
+		<meta name="viewport" content="width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1,user-scalable=no" />
+		<style type="text/css">
+			/* common css */
+			.left { float: left; }
+			.right { float: right; }
+			.flex { display: flex; }
+			*[hidden='true'] { visibility: hidden; display: inline-block; }
+			*[hidden='false'] { visibility: visible; display: inline-block; }
+			.ver-mid { vertical-align: middle; }
+			.hor-cen-abs { position: absolute; left: 50%; transform: translateX(-50%); }
+			.ver-cen-abs { position: absolute; top: 50%; transform: translateY(-50%); }
+			.col4 { width: 33.3%; }
+			.col8 { width: 66.6%; }
+			i { font-style: normal; color: #458703; }
+			.cursor-pointer:hover { cursor: pointer; }
+			
+			/*this page*/
+			body { box-sizing: border-box; -moz-box-sizing: border-box; -webkit-box-sizing: border-box;
+				 padding: 5px 8px 8px; font-family: SF Pro Text,SF Pro Icons,AOS Icons,Helvetica Neue,Helvetica,Arial,sans-serif; }
+			.container { width: 100%; border-radius: 8px; box-shadow: 2px 0px 4px 1px #E6E7DF; }
+			
+			.title-bar { padding: 15px 24px 15px 21px; background: linear-gradient(to right, #eaead0, #c7c7a5);
+				border-top-left-radius: 8px; border-top-right-radius: 8px; position: relative; }
+			
+			.title { display: inline-block; margin-left: 10px; font-size: 13px; font-weight: bold; }
+			.btn-switch { right: 24px; transform: rotate(180deg); animation: all .5s; }
+			.btn-switch.active { transform: rotate(0); }
+			.content { padding: 0px; display: flex; overflow: hidden; transition: all .5s; -webkit-transition: all .5s;
+				height: 0px; opacity: 0; }
+			
+			.content.active { padding: 15px 27px 17px 32px; height: auto; opacity: 1; }
+			.image-device { padding-right: 27px; display: flex; align-items: center; flex: 1; }
+			.responsive-img { width: 100%; height: auto; }
+			.text-content { font-size: 12px; overflow: hidden; display: flex; align-items: center; flex: 2; }
+			.select-bar { display: flex; align-items: center; padding: 10px 22px; color: #4a7a00; 
+				border: 1px #e6e7df solid; border-width: 1px 0px; font-size: 12px; position: relative;
+				border-bottom-left-radius: 8px; border-bottom-right-radius: 8px; }
+			
+			a { color: #4a7a00; }
+			.a-prev { margin-left: 19px; max-width: 40%; }
+			.a-next { position: absolute; right: 48px; max-width: 40%; }
+			.btn-next { position: absolute; right: 22px; }
+			
+			/*for iPad and phone but not for iPad Pro*/
+			@media only screen and (max-width: 768px) {
+				.content { display: block; }
+				.image-device { padding-right: 0; }
+			}
+			
+		</style>
+	</head>
+	<body>
+		<!-- Actual Dom, to be filled -->
+		<div class="container" id="container">
+			
+		</div>
+		
+		<!-- template -->
+		<script type="text/template" id="template-item">
+			<!-- header start -->
+			<div class="title-bar">
+				<img src="img/book.png" alt="" class="ver-mid" aria-hidden="true" />
+				<h1 class="title">${data.title}</h1>
+				<img src="img/up.png" alt="" class="right ver-cen-abs cursor-pointer btn-switch active"
+					id="btn-switch"
+					onclick="toggle()" aria-hidden="true" />
+			</div>
+			<!-- header end -->
+			
+			<!-- content start -->
+			<div class="content active" id="content">
+				<div class="image-device">
+					<img src="./${data.content[currentIndex].thumbnail ? data.content[currentIndex].thumbnail : ''}"
+						onerror="javascript: this.src='./img/no_data.png';"
+						alt="apple product" title="product" class="responsive-img"/>
+				</div>
+				<div class="text-content">
+					${data.content[currentIndex].description}
+				</div>
+			</div>
+			<!-- content end -->
+			
+			<!-- footer start -->
+			<div class="select-bar">
+				<img hidden="${currentIndex <= 0}"
+					src="img/left.png"
+					alt="prevPage" class="cursor-pointer btn-prev"
+					onclick="doPrev()"/>
+				<a hidden="${currentIndex <= 0}" href="#" class="a-prev" onclick="doPrev()">Prev</a>
+				<a hidden="${currentIndex >= data.content.length-1}" href="#" class="ver-cen-abs a-next" onclick="doNext()">
+					${currentIndex < data.content.length-1 ? data.content[currentIndex+1].title : ''}
+				</a>
+				<img hidden="${currentIndex >= data.content.length-1}" src="img/right.png"
+					alt="nextPage" class="ver-cen-abs cursor-pointer btn-next" onclick="doNext()"/>
+			</div>
+			<!-- footer end -->
+			
+		</script>
+		
+		<!-- JavaScript -->
+		<script type="text/javascript">
+			
+			/*** Common Data ***/
+			var data = null;	//Object type, data from interface(json)
+			var currentIndex = 0;	//Number type, current display index of data
+			var hasExpand = true; //Boolean type, show is the content has been expanded, default: expanded
+			
+			getListData();	//request data and fill the content
+			
+			/**
+			 * create a ajax object
+			 */
+			function createXHR() {
+				try {
+					return new XMLHttpRequest();
+				} catch(e) {
+					try {
+						return new ActiveXObject('Msxml2.XMLHTTP');
+					} catch(e) {
+						try {
+							return new ActiveXObject('Microsoft.XMLHTTP');
+						} catch(e) {
+							failure('Your browser can\'t support Ajax, please update your browser');
+						}
+					}
+				}
+			}
+			
+			/**
+			 * get data from json file (ajax)
+			 */
+			function getListData() {
+				var url = './content.json';	//url of interface
+				
+				var xhr = createXHR();
+				if (!xhr) failure('Your browser can\'t support Ajax, please update your browser');
+				xhr.onreadystatechange = function () {
+					if (xhr.readyState == 4 && xhr.status == 200) {
+						try{
+							data = JSON.parse(xhr.responseText);
+							data ? parseData() : failure();
+						}catch(e){
+							failure('failed to get data');
+						}
+					}
+					else if (xhr.readyState == 4 && xhr.status == 404) {
+						failure();
+					}
+				}
+				
+				xhr.open('GET', url, true);
+				xhr.setRequestHeader('Content-Type', 'application/json;charset=utf8');
+				xhr.send();
+			}
+			
+			/**
+			 * parse data and render HTML (template rules are designed by myself)
+			 */
+			function parseData() {
+				var srcHTML = document.getElementById('template-item').innerHTML;
+				
+				//parse ${XXX} to a JavaScript template and replace it
+				var destHTML = srcHTML.replace(/\$\{([^}]*)\}/g, function(item) {
+					var destStr = /^\$\{(.*)\}$/.exec(item)[1];
+					return eval(destStr);
+				});
+				
+				document.getElementById('container').innerHTML = destHTML;
+			}
+			
+			/**
+			 * handle error
+			 */
+			function failure(str) {
+				document.getElementById('container').innerHTML = str || 'Sorry, no Data';
+			}
+			
+			/**
+			 * go to prev item
+			 */
+			function doPrev() {
+				currentIndex--;
+				parseData();
+			}
+			
+			/**
+			 * go to next item
+			 */
+			function doNext() {
+				currentIndex++;
+				parseData();
+			}
+			
+			/**
+			 * collapse/expand the content
+			 */
+			function toggle() {
+				var switchBtn = document.getElementById('btn-switch');
+				var content = document.getElementById('content');
+				hasExpand ? removeClass(switchBtn, 'active') : addClass(switchBtn, 'active');
+				hasExpand ? removeClass(content, 'active') : addClass(content, 'active');
+				hasExpand = !hasExpand;
+			}
+			
+			/**
+			 * dom method: add a class from a dom element
+			 * @param {Object} dom:  src element
+			 * @param {Object} name: class name
+			 */
+			function addClass(dom, name) {
+				removeClass(dom, name);
+				dom.className += " " + name;
+			}
+			
+			/**
+			 * dom method: remove a class from a dom element
+			 * @param {Object} dom:  src element
+			 * @param {Object} name: class name
+			 */
+			function removeClass(dom, name) {
+				dom.className = dom.className.replace(name, '');
+			}
+			
+		</script>
+	</body>
+</html>
